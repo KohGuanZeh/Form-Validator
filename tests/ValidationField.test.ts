@@ -1,7 +1,7 @@
 import { Rule, ValidationField } from "../src/validator";
 
 describe("Test validate", () => {
-  const rules = [
+  const rules: Rule[] = [
     {
       name: "Is Case Insensitve A",
       fn: (field) => field.value.toLowerCase() === "a",
