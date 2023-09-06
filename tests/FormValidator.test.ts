@@ -11,21 +11,29 @@ describe("Test validate", () => {
     fn: (field) => field.value == "A",
   };
 
+  let validator: FormValidator;
   let inputField: HTMLInputElement;
   beforeEach(() => {
     document.body.innerHTML = `
     <form>
-      <input type="text"/>
+      <input name="input-1" type="text"/>
     </form>
     `;
+    validator = new FormValidator("form");
     inputField = document.querySelector("input") as HTMLInputElement;
   });
 
-  test("validate should return true if input matching query passes all supplied rules", () => {
-    let validator = new FormValidator("form");
+  test("validate should return true if input matching selector passes all supplied rules", () => {
     validator.addField("input", [anyARule, upperCaseARule]);
-    let input = document.querySelector("input") as HTMLInputElement;
-    input.value = "A";
+    inputField.value = "A";
     expect(validator.validateField("input")).toStrictEqual(true);
+  });
+
+  test("validate should return false if selector was not registered under addField", () => {
+    validator.addField("input", [anyARule, upperCaseARule]);
+    inputField.value = "A";
+    let unAddedSelector = "[name='input-1']";
+    expect(document.querySelector(unAddedSelector)).toStrictEqual(inputField);
+    expect(() => validator.validateField(unAddedSelector)).toThrowError("Unidentified selector.");
   });
 });

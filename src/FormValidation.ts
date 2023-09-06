@@ -50,6 +50,9 @@ export class FormValidator {
         return false;
       }
     }
+    if (!this.itemsToValidate.hasOwnProperty(cssSelector)) {
+      throw new Error("Unidentified selector.");
+    }
     let inputElement = this.formElement.querySelector(cssSelector) as HTMLInputElement;
     for (const rule of this.itemsToValidate[cssSelector]) {
       if (!rule.fn(inputElement)) {
