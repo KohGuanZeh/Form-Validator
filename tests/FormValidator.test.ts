@@ -29,12 +29,23 @@ describe("Test validateField", () => {
     expect(validator.validateField("input")).toStrictEqual(true);
   });
 
-  test("validateField should return false if selector was not registered under addField", () => {
+  test("validateField should throw error if selector was not registered under addField", () => {
     validator.addField("input", [anyARule, upperCaseARule]);
     inputField.value = "A";
     let unAddedSelector = "[name='input-1']";
     expect(document.querySelector(unAddedSelector)).toStrictEqual(inputField);
-    expect(() => validator.validateField(unAddedSelector)).toThrowError("Unidentified selector.");
+    expect(() => validator.validateField(unAddedSelector)).toThrowError(
+      "Unidentified selector. The same selector should be used with addField"
+    );
+  });
+
+  test("validateField should throw error if FormValidator cannot query for HTMLFormElement", () => {
+    validator = new FormValidator("#form");
+    validator.addField("input", [anyARule]);
+    inputField.value = "a";
+    expect(() => validator.validateField("input")).toThrowError(
+      "Cannot query requested HTMLFormElement."
+    );
   });
 });
 
@@ -44,12 +55,12 @@ describe("Test validate", () => {
   let inputField2: HTMLInputElement;
   beforeEach(() => {
     document.body.innerHTML = `
-    <form id="form-to-validate">
+    <form>
       <input name="input-1" type="text">
       <input name="input-2" type="text">
     </form>
     `;
-    validator = new FormValidator("#form-to-validate");
+    validator = new FormValidator("form");
     inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
     inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
   });
@@ -60,5 +71,12 @@ describe("Test validate", () => {
     inputField1.value = "A";
     inputField2.value = "a";
     expect(validator.validate()).toStrictEqual(true);
+  });
+
+  test("validate should throw error if FormValidator cannot query for HTMLFormElement", () => {
+    validator = new FormValidator("#someOtherForm");
+    validator.addField("[name='input-1']", [anyARule]);
+    inputField1.value = "a";
+    expect(() => validator.validate()).toThrowError("Cannot query requested HTMLFormElement.");
   });
 });

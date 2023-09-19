@@ -21,6 +21,20 @@ export class FormValidator {
   }
 
   /**
+   * Queries for the `HTMLFormElement` to be validated.
+   * @throws "Cannot query requested HTMLFormElement." If document.querySelector does not return a HTMLFormElement.
+   */
+  private queryFormElement(): void {
+    if (this.formElement) {
+      return;
+    }
+    this.formElement = document.querySelector(this.formCssSelector);
+    if (!this.formElement) {
+      throw new Error("Cannot query requested HTMLFormElement.");
+    }
+  }
+
+  /**
    * Builder method that returns the `FormValidator` instance upon adding a validation field.
    *
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
@@ -42,12 +56,6 @@ export class FormValidator {
    * @returns True if all fields satisfy their supplioed rules requirements.
    */
   public validate(): boolean {
-    if (!this.formElement) {
-      this.formElement = document.querySelector(this.formCssSelector);
-      if (!this.formElement) {
-        return false;
-      }
-    }
     let result = true;
     Object.keys(this.itemsToValidate).forEach((key) => {
       result &&= this.validateField(key);
@@ -63,14 +71,9 @@ export class FormValidator {
    * @returns True if `HTMLInputElement` satisfies all supplied rules.
    */
   public validateField(cssSelector: string): boolean {
-    if (!this.formElement) {
-      this.formElement = document.querySelector(this.formCssSelector);
-      if (!this.formElement) {
-        return false;
-      }
-    }
+    this.queryFormElement();
     if (!this.itemsToValidate.hasOwnProperty(cssSelector)) {
-      throw new Error("Unidentified selector.");
+      throw new Error("Unidentified selector. The same selector should be used with addField");
     }
     let inputElement = this.formElement.querySelector(cssSelector) as HTMLInputElement;
     for (const rule of this.itemsToValidate[cssSelector]) {
