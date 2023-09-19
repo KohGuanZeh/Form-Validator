@@ -37,6 +37,25 @@ export class FormValidator {
   }
 
   /**
+   * Validates all fields added to the validator.
+   *
+   * @returns True if all fields satisfy their supplioed rules requirements.
+   */
+  public validate(): boolean {
+    if (!this.formElement) {
+      this.formElement = document.querySelector(this.formCssSelector);
+      if (!this.formElement) {
+        return false;
+      }
+    }
+    let result = true;
+    Object.keys(this.itemsToValidate).forEach((key) => {
+      result &&= this.validateField(key);
+    });
+    return result;
+  }
+
+  /**
    * Validates a specific `HTMLInputElement`.
    * Note that the `cssSelector` must be exactly the same as what was supplied through `addField`.
    *
