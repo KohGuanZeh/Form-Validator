@@ -17,6 +17,7 @@ describe("Test validateField", () => {
     document.body.innerHTML = `
     <form>
       <input name="input-1" type="text"/>
+      <span class="dummy-element"/>
     </form>
     `;
     validator = new FormValidator("form");
@@ -45,6 +46,13 @@ describe("Test validateField", () => {
     expect(document.querySelector(unAddedSelector)).toStrictEqual(inputField);
     expect(() => validator.validateField(unAddedSelector)).toThrowError(
       "Unidentified selector. The same selector should be used with addField"
+    );
+  });
+
+  test("validateField should throw error if selector registered is not an HTMLInputElement", () => {
+    validator.addField(".dummy-element", [anyARule]);
+    expect(() => validator.validateField(".dummy-element")).toThrowError(
+      "CSS Selector is not referring to an input element."
     );
   });
 });

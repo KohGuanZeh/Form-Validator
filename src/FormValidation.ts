@@ -59,13 +59,17 @@ export class FormValidator {
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
    * @returns True if `HTMLInputElement` satisfies all supplied rules.
    * @throws "Unidentified selector. The same selector should be used with addField" if query selector has not been registered through `addField`.
+   * @throws "CSS Selector is not referring to an input element." if query selector passed is not referring to an HTMLInputElement.
    */
   public validateField(cssSelector: string): boolean {
     this.queryFormElement();
     if (!this.itemsToValidate.hasOwnProperty(cssSelector)) {
       throw new Error("Unidentified selector. The same selector should be used with addField");
     }
-    let inputElement = this.formElement.querySelector(cssSelector) as HTMLInputElement;
+    let inputElement = this.formElement.querySelector(cssSelector);
+    if (!(inputElement instanceof HTMLInputElement)) {
+      throw new Error("CSS Selector is not referring to an input element.");
+    }
     for (const rule of this.itemsToValidate[cssSelector]) {
       if (!rule.fn(inputElement)) {
         return false;
