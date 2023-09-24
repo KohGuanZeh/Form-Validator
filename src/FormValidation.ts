@@ -12,9 +12,10 @@ export class FormValidator {
   private formElement?: HTMLFormElement;
   /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
   private itemsToValidate: { [key: string]: Set<Rule> } = {};
+  private requiredGroups: Set<string> = new Set();
 
   /**
-   * @param formCssSelector CSS Selector of 'HTMLFormElement` to be validated.
+   * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
    */
   public constructor(formCssSelector: string) {
     this.formCssSelector = formCssSelector;
@@ -22,7 +23,8 @@ export class FormValidator {
 
   /**
    * Queries for the `HTMLFormElement` to be validated.
-   * @throws "Cannot query requested HTMLFormElement." If document.querySelector does not return a HTMLFormElement.
+   *
+   * @throws "Cannot query requested HTMLFormElement." if document.querySelector does not return a `HTMLFormElement`.
    */
   private queryFormElement(): void {
     if (this.formElement) {
@@ -51,24 +53,12 @@ export class FormValidator {
   }
 
   /**
-   * Validates all fields added to the validator.
-   *
-   * @returns True if all fields satisfy their supplioed rules requirements.
-   */
-  public validate(): boolean {
-    let result = true;
-    Object.keys(this.itemsToValidate).forEach((key) => {
-      result &&= this.validateField(key);
-    });
-    return result;
-  }
-
-  /**
    * Validates a specific `HTMLInputElement`.
    * Note that the `cssSelector` must be exactly the same as what was supplied through `addField`.
    *
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
    * @returns True if `HTMLInputElement` satisfies all supplied rules.
+   * @throws "Unidentified selector. The same selector should be used with addField" if query selector has not been registered through `addField`.
    */
   public validateField(cssSelector: string): boolean {
     this.queryFormElement();
@@ -82,5 +72,52 @@ export class FormValidator {
       }
     }
     return true;
+  }
+
+  /**
+   * Builder method that returns the `FormValidator` instance upon adding a required input group.
+   *
+   * @param groupName Name of input group that is required.
+   * @returns current `FormValidator` instance.
+   */
+  public addRequiredGroup(groupName: string): FormValidator {
+    this.requiredGroups.add(groupName);
+    return this;
+  }
+
+  /**
+   * Validates a required group. Groups are identified with fields having the same name.
+   *
+   * @param groupName Name of input group that is required.
+   * @returns True if at least one of the inputs is checked in the group.
+   */
+  public validateRequiredGroup(groupName: string): boolean {
+    this.queryFormElement();
+    let checked = false;
+    let elements = this.formElement.querySelectorAll(
+      `input[name='${groupName}']`
+    ) as NodeListOf<HTMLInputElement>;
+    elements.forEach((element) => {
+      if (element.checked) {
+        checked = true;
+      }
+    });
+    return checked;
+  }
+
+  /**
+   * Validates all fields added to the validator.
+   *
+   * @returns True if all fields and required groups satisfy their requirements.
+   */
+  public validate(): boolean {
+    let result = true;
+    Object.keys(this.itemsToValidate).forEach((key) => {
+      result &&= this.validateField(key);
+    });
+    this.requiredGroups.forEach((groupName) => {
+      result &&= this.validateRequiredGroup(groupName);
+    });
+    return result;
   }
 }

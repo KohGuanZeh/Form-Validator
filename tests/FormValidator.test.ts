@@ -23,6 +23,15 @@ describe("Test validateField", () => {
     inputField = document.querySelector("input") as HTMLInputElement;
   });
 
+  test("validateField should throw error if FormValidator cannot query for HTMLFormElement", () => {
+    validator = new FormValidator("#someOtherForm");
+    validator.addField("input", [anyARule]);
+    inputField.value = "a";
+    expect(() => validator.validateField("input")).toThrowError(
+      "Cannot query requested HTMLFormElement."
+    );
+  });
+
   test("validateField should return true if input matching selector passes all supplied rules", () => {
     validator.addField("input", [anyARule, upperCaseARule]);
     inputField.value = "A";
@@ -38,45 +47,65 @@ describe("Test validateField", () => {
       "Unidentified selector. The same selector should be used with addField"
     );
   });
+});
 
-  test("validateField should throw error if FormValidator cannot query for HTMLFormElement", () => {
-    validator = new FormValidator("#form");
-    validator.addField("input", [anyARule]);
-    inputField.value = "a";
-    expect(() => validator.validateField("input")).toThrowError(
-      "Cannot query requested HTMLFormElement."
-    );
+describe("Test validateRequiredGroup", () => {
+  test("validateRequiredGroup should return true if at least one input in the group is checked.", () => {
+    document.body.innerHTML = `
+    <form>
+      <input name="required-group" type="radio" value="1">
+      <input name="required-group" type="radio" value="2">
+      <input name="required-group" type="checkbox" value="3">
+    </form>
+    `;
+    let validator = new FormValidator("form");
+    let options = document.querySelectorAll("input");
+    options[1].checked = true;
+    expect(validator.validateRequiredGroup("required-group")).toStrictEqual(true);
   });
 });
 
 describe("Test validate", () => {
   let validator: FormValidator;
-  let inputField1: HTMLInputElement;
-  let inputField2: HTMLInputElement;
   beforeEach(() => {
     document.body.innerHTML = `
     <form>
       <input name="input-1" type="text">
       <input name="input-2" type="text">
+      <input name="required-group" type="radio" value="1">
+      <input name="required-group" type="radio" value="2">
+      <input name="required-group" type="checkbox" value="3">
     </form>
     `;
     validator = new FormValidator("form");
-    inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
-    inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
-  });
-
-  test("validate should return true if all fields passes their supplied rules", () => {
-    validator.addField("[name='input-1']", [anyARule, upperCaseARule]);
-    validator.addField("[name='input-2']", [anyARule]);
-    inputField1.value = "A";
-    inputField2.value = "a";
-    expect(validator.validate()).toStrictEqual(true);
   });
 
   test("validate should throw error if FormValidator cannot query for HTMLFormElement", () => {
+    let input = document.querySelector("[name='input-1']") as HTMLInputElement;
     validator = new FormValidator("#someOtherForm");
     validator.addField("[name='input-1']", [anyARule]);
-    inputField1.value = "a";
+    input.value = "a";
     expect(() => validator.validate()).toThrowError("Cannot query requested HTMLFormElement.");
+  });
+
+  test("validate should return true if all fields and required groups meet their requirements", () => {
+    let inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
+    let inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
+    let groupInputs = document.querySelectorAll(
+      "[name='required-group']"
+    ) as NodeListOf<HTMLInputElement>;
+
+    validator.addField("[name='input-1']", [anyARule, upperCaseARule]);
+    validator.addField("[name='input-2']", [anyARule]);
+    validator.addRequiredGroup("required-group");
+
+    inputField1.value = "A";
+    inputField2.value = "a";
+
+    expect(validator.validate()).toStrictEqual(false);
+
+    groupInputs[1].checked = true;
+
+    expect(validator.validate()).toStrictEqual(true);
   });
 });
