@@ -6,34 +6,34 @@ export interface Rule {
 }
 
 export class FormValidator {
-  /** CSS selector for `HTMLFormElement` to be validated. */
-  private formCssSelector: string;
   /** `HTMLFormElement` to be validated */
-  private formElement?: HTMLFormElement;
+  private formElement: HTMLFormElement;
   /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
   private itemsToValidate: { [key: string]: Set<Rule> } = {};
   private requiredGroups: Set<string> = new Set();
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
+   * @param submitCallback Function to fire after successful validation of form on submit.
+   * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    */
-  public constructor(formCssSelector: string) {
-    this.formCssSelector = formCssSelector;
-  }
-
-  /**
-   * Queries for the `HTMLFormElement` to be validated.
-   *
-   * @throws "Cannot query requested HTMLFormElement." if document.querySelector does not return a `HTMLFormElement`.
-   */
-  private queryFormElement(): void {
-    if (this.formElement) {
-      return;
-    }
-    this.formElement = document.querySelector(this.formCssSelector);
+  public constructor(formCssSelector: string, submitCallback: () => void = () => {}) {
+    this.formElement = document.querySelector(formCssSelector);
     if (!this.formElement) {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
+    this.formElement.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        if (!this.validate()) {
+          event.stopPropagation();
+          return;
+        }
+        submitCallback();
+      },
+      { capture: true }
+    );
   }
 
   /**
@@ -58,11 +58,15 @@ export class FormValidator {
    *
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
    * @returns True if `HTMLInputElement` satisfies all supplied rules.
+   * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    * @throws "Unidentified selector. The same selector should be used with addField" if query selector has not been registered through `addField`.
    * @throws "CSS Selector is not referring to an input element." if query selector passed is not referring to an HTMLInputElement.
    */
   public validateField(cssSelector: string): boolean {
-    this.queryFormElement();
+    if (!this.formElement) {
+      throw new Error("Cannot query requested HTMLFormElement.");
+    }
+
     if (!this.itemsToValidate.hasOwnProperty(cssSelector)) {
       throw new Error("Unidentified selector. The same selector should be used with addField");
     }
@@ -93,10 +97,14 @@ export class FormValidator {
    * Validates a required group. Groups are identified with fields having the same name.
    *
    * @param groupName Name of input group that is required.
+   * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    * @returns True if at least one of the inputs is checked in the group.
    */
   public validateRequiredGroup(groupName: string): boolean {
-    this.queryFormElement();
+    if (!this.formElement) {
+      throw new Error("Cannot query requested HTMLFormElement.");
+    }
+
     let checked = false;
     let elements = this.formElement.querySelectorAll(
       `input[name='${groupName}']`

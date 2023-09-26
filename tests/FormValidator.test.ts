@@ -10,6 +10,19 @@ const upperCaseARule: Rule = {
   fn: (field) => field.value == "A",
 };
 
+describe("Test constructor", () => {
+  test("Constructor should throw error if HTMLFormElement cannot be found.", () => {
+    document.body.innerHTML = `
+    <form>
+      <input type="text"/>
+    </form>
+    `;
+    expect(() => new FormValidator("#someOtherForm")).toThrowError(
+      "Cannot query requested HTMLFormElement."
+    );
+  });
+});
+
 describe("Test validateField", () => {
   let validator: FormValidator;
   let inputField: HTMLInputElement;
@@ -22,15 +35,6 @@ describe("Test validateField", () => {
     `;
     validator = new FormValidator("form");
     inputField = document.querySelector("input") as HTMLInputElement;
-  });
-
-  test("validateField should throw error if FormValidator cannot query for HTMLFormElement", () => {
-    validator = new FormValidator("#someOtherForm");
-    validator.addField("input", [anyARule]);
-    inputField.value = "a";
-    expect(() => validator.validateField("input")).toThrowError(
-      "Cannot query requested HTMLFormElement."
-    );
   });
 
   test("validateField should return true if input matching selector passes all supplied rules", () => {
@@ -88,14 +92,6 @@ describe("Test validate", () => {
     validator = new FormValidator("form");
   });
 
-  test("validate should throw error if FormValidator cannot query for HTMLFormElement", () => {
-    let input = document.querySelector("[name='input-1']") as HTMLInputElement;
-    validator = new FormValidator("#someOtherForm");
-    validator.addField("[name='input-1']", [anyARule]);
-    input.value = "a";
-    expect(() => validator.validate()).toThrowError("Cannot query requested HTMLFormElement.");
-  });
-
   test("validate should return true if all fields and required groups meet their requirements", () => {
     let inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
     let inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
@@ -115,5 +111,47 @@ describe("Test validate", () => {
     groupInputs[1].checked = true;
 
     expect(validator.validate()).toStrictEqual(true);
+  });
+});
+
+describe("Test submission", () => {
+  test("Form submission should pass if and only if validation passes.", () => {
+    document.body.innerHTML = `
+    <form>
+      <input name="input-1" type="text">
+      <input name="input-2" type="text">
+      <input name="required-group" type="radio" value="1">
+      <input name="required-group" type="radio" value="2">
+      <input name="required-group" type="radio" value="3">
+      <input type="submit" value="Submit"/>
+    </form>
+    `;
+    let submitted = false;
+
+    let validator = new FormValidator("form", () => {
+      submitted = true;
+    })
+      .addField("[name='input-1']", [anyARule])
+      .addField("[name='input-2']", [anyARule, upperCaseARule])
+      .addRequiredGroup("required-group");
+
+    let inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
+    let inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
+    let groupInputs = document.querySelectorAll(
+      "[name='required-group']"
+    ) as NodeListOf<HTMLInputElement>;
+    let submitButton = document.querySelector("[type='submit']") as HTMLInputElement;
+
+    inputField1.value = "a";
+    inputField2.value = "Some wrong value";
+    groupInputs[2].checked = true;
+    submitButton.click();
+
+    expect(submitted).toStrictEqual(false);
+
+    inputField2.value = "A";
+    submitButton.click();
+
+    expect(submitted).toStrictEqual(true);
   });
 });
