@@ -30,6 +30,12 @@ export class FormValidator {
     }
   }
 
+  /**
+   * Adds the submission callback to the submit event listener of the `HTMLFormElement`.
+   * The callback will only fire when the declared fields are valid.
+   *
+   * @param submitCallback Function to call after successful validation of form on submit.
+   */
   private validateOnSubmit(submitCallback: () => void): void {
     this.formElement.addEventListener(
       "submit",
