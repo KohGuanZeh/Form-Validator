@@ -115,7 +115,13 @@ describe("Test validate", () => {
 });
 
 describe("Test submission", () => {
-  test("Form submission should pass if and only if validation passes.", () => {
+  let validator: FormValidator;
+  let inputField1: HTMLInputElement;
+  let inputField2: HTMLInputElement;
+  let groupInputs: NodeListOf<HTMLInputElement>;
+  let submitButton: HTMLInputElement;
+  let submitted: boolean;
+  beforeEach(() => {
     document.body.innerHTML = `
     <form>
       <input name="input-1" type="text">
@@ -126,32 +132,70 @@ describe("Test submission", () => {
       <input type="submit" value="Submit"/>
     </form>
     `;
-    let submitted = false;
+    submitted = false;
+    inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
+    inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
+    groupInputs = document.querySelectorAll(
+      "[name='required-group']"
+    ) as NodeListOf<HTMLInputElement>;
+    submitButton = document.querySelector("[type='submit']") as HTMLInputElement;
+  });
 
-    let validator = new FormValidator("form", () => {
+  test("Form submission should pass if and only if validation passes.", () => {
+    validator = new FormValidator("form", () => {
       submitted = true;
     })
       .addField("[name='input-1']", [anyARule])
       .addField("[name='input-2']", [anyARule, upperCaseARule])
       .addRequiredGroup("required-group");
 
-    let inputField1 = document.querySelector("[name='input-1']") as HTMLInputElement;
-    let inputField2 = document.querySelector("[name='input-2']") as HTMLInputElement;
-    let groupInputs = document.querySelectorAll(
-      "[name='required-group']"
-    ) as NodeListOf<HTMLInputElement>;
-    let submitButton = document.querySelector("[type='submit']") as HTMLInputElement;
-
     inputField1.value = "a";
     inputField2.value = "Some wrong value";
     groupInputs[2].checked = true;
-    submitButton.click();
 
+    submitButton.click();
     expect(submitted).toStrictEqual(false);
 
     inputField2.value = "A";
-    submitButton.click();
 
+    submitButton.click();
+    expect(submitted).toStrictEqual(true);
+  });
+
+  test("FormValidator should not run validation if no submission callback was passed.", () => {
+    let form = document.querySelector("form");
+    form?.addEventListener("submit", (e) => {
+      submitted = true;
+    });
+
+    validator = new FormValidator("form")
+      .addField("[name='input-1']", [anyARule])
+      .addField("[name='input-2']", [anyARule, upperCaseARule])
+      .addRequiredGroup("required-group");
+
+    inputField1.value = "a";
+    inputField2.value = "Some wrong value";
+    groupInputs[0].checked = true;
+
+    // No validation should occur
+    submitButton.click();
+    expect(submitted).toStrictEqual(true);
+
+    submitted = false;
+    submitButton.addEventListener("click", (e) => {
+      if (!validator.validate()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // validate should return false
+    submitButton.click();
+    expect(submitted).toStrictEqual(false);
+
+    inputField2.value = "A";
+
+    submitButton.click();
     expect(submitted).toStrictEqual(true);
   });
 });

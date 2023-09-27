@@ -14,14 +14,23 @@ export class FormValidator {
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
-   * @param submitCallback Function to fire after successful validation of form on submit.
+   * @param submitCallback Function to call after successful validation of form on submit. By default it is null.
+   * If no function is passed, validator will not automatically validate on submit.
    * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    */
-  public constructor(formCssSelector: string, submitCallback: () => void = () => {}) {
-    this.formElement = document.querySelector(formCssSelector);
+  public constructor(formCssSelector: string, submitCallback: (() => void) | null = null) {
+    this.formElement = document.querySelector(formCssSelector) as HTMLFormElement;
     if (!this.formElement) {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
+
+    // Loose check for null
+    if (submitCallback != null) {
+      this.validateOnSubmit(submitCallback);
+    }
+  }
+
+  private validateOnSubmit(submitCallback: () => void): void {
     this.formElement.addEventListener(
       "submit",
       (event) => {
