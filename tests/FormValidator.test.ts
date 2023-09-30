@@ -75,6 +75,7 @@ describe("Test validateRequiredGroup", () => {
     let validator = new FormValidator("form");
     let options = document.querySelectorAll("input");
     options[1].checked = true;
+    validator.addRequiredGroup("required-group");
     expect(validator.validateRequiredGroup("required-group")).toStrictEqual(true);
   });
 });

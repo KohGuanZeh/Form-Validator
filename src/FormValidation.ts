@@ -11,6 +11,13 @@ export interface ValidationStyleConfigs {
   msgContainer?: HTMLElement;
 }
 
+export const globalDefaultStyleConfigs: ValidationStyleConfigs = {
+  errorMsgClass: "validator-error-msg",
+  errorMsgStyle: {},
+  errorFieldClass: "validator-error-field",
+  errorFieldStyle: {},
+};
+
 export interface Rule {
   /** Name of the `Rule`. */
   name: string;
@@ -23,7 +30,8 @@ export interface Rule {
 interface ValidationItems {
   /** Field validation status. */
   isValid: boolean;
-  /** `ValidationStyleConfigs` to be applied to this field. */
+  /** `ValidationStyleConfigs` to be applied to this field.
+   * Overwrites the default `ValidationStyleConfigs` in the FormValidator for the particular field. */
   style: ValidationStyleConfigs;
   /** Element that indicates error for the field. */
   errorElement?: HTMLElement;
@@ -44,8 +52,8 @@ export class FormValidator {
   private formElement: HTMLFormElement;
   /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
   private itemsToValidate: { [key: string]: Set<Rule> } = {};
-  /** Set of group names that requires at least one input to be checked in the group. */
-  private requiredGroups: Set<string> = new Set();
+  /** Group names that requires at least one input to be checked in the group. */
+  private requiredGroups: { [key: string]: GroupValidationItems } = {};
   /** Default `ValidationStyleConfigs` for invalid fields and groups. */
   private defaultStyleConfigs: ValidationStyleConfigs;
 
@@ -53,13 +61,20 @@ export class FormValidator {
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
    * @param submitCallback Function to call after successful validation of form on submit. By default it is null.
    * If no function is passed, validator will not automatically validate on submit.
+   * @param defaultStyleConfigs Default `ValidationStyleConfigs` to be applied to validator.
    * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    */
-  public constructor(formCssSelector: string, submitCallback: (() => void) | null = null) {
+  public constructor(
+    formCssSelector: string,
+    submitCallback: (() => void) | null = null,
+    defaultStyleConfigs: ValidationStyleConfigs = globalDefaultStyleConfigs
+  ) {
     this.formElement = document.querySelector(formCssSelector) as HTMLFormElement;
     if (!this.formElement) {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
+
+    this.defaultStyleConfigs = defaultStyleConfigs;
 
     // Loose check for null
     if (submitCallback != null) {
@@ -136,17 +151,36 @@ export class FormValidator {
 
   /**
    * Builder method that returns the `FormValidator` instance upon adding a required input group.
+   * If same group name was passed, errorMsg and stlyeConfigs (provided it is not `null`) of the added group will be overwritten.
    *
    * @param groupName Name of input group that is required.
+   * @param errorMsg Custom error message to show if required group is not met.
+   * @param styleConfigs `ValidationStyleConfigs` to be applied to required group.
    * @returns current `FormValidator` instance.
    */
-  public addRequiredGroup(groupName: string): FormValidator {
-    this.requiredGroups.add(groupName);
+  public addRequiredGroup(
+    groupName: string,
+    errorMsg: string = "Group is required.",
+    styleConfigs: ValidationStyleConfigs | null = null
+  ): FormValidator {
+    if (this.requiredGroups.hasOwnProperty(groupName)) {
+      this.requiredGroups[groupName].errorMsg = errorMsg;
+      if (styleConfigs) {
+        this.requiredGroups[groupName].style = styleConfigs;
+      }
+    } else {
+      this.requiredGroups[groupName] = {
+        isValid: false,
+        errorMsg: errorMsg,
+        style: styleConfigs ? styleConfigs : this.defaultStyleConfigs,
+      };
+    }
     return this;
   }
 
   /**
    * Validates a required group. Groups are identified with fields having the same name.
+   * Group name has to be added into the `FormValidator` for validation to work.
    *
    * @param groupName Name of input group that is required.
    * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
@@ -166,6 +200,12 @@ export class FormValidator {
         checked = true;
       }
     });
+
+    this.requiredGroups[groupName].isValid = checked;
+    if (!checked) {
+      // Show Validation Error Message
+    }
+
     return checked;
   }
 
@@ -179,8 +219,8 @@ export class FormValidator {
     Object.keys(this.itemsToValidate).forEach((key) => {
       result &&= this.validateField(key);
     });
-    this.requiredGroups.forEach((groupName) => {
-      result &&= this.validateRequiredGroup(groupName);
+    Object.keys(this.requiredGroups).forEach((key) => {
+      result &&= this.validateRequiredGroup(key);
     });
     return result;
   }
