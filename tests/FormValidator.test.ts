@@ -2,11 +2,13 @@ import { Rule, FormValidator } from "../src/FormValidation";
 
 const anyARule: Rule = {
   name: "Is Case Insensitve A",
+  errorMsg: "Field is not 'a' or 'A'.",
   fn: (field) => field.value.toLowerCase() === "a",
 };
 
 const upperCaseARule: Rule = {
   name: "Is Upper Case A",
+  errorMsg: "Field is not uppercase 'A'.",
   fn: (field) => field.value == "A",
 };
 
@@ -114,7 +116,7 @@ describe("Test validate", () => {
   });
 });
 
-describe("Test submission", () => {
+describe("Test Submission Behaviour", () => {
   let validator: FormValidator;
   let inputField1: HTMLInputElement;
   let inputField2: HTMLInputElement;
@@ -189,7 +191,7 @@ describe("Test submission", () => {
       }
     });
 
-    // validate should return false
+    // Validation should fail
     submitButton.click();
     expect(submitted).toStrictEqual(false);
 

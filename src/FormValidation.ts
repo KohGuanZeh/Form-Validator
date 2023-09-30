@@ -1,16 +1,53 @@
+export interface ValidationStyleConfigs {
+  /** Class names to be associated with the error message. */
+  errorMsgClass: string | string[];
+  /** Custom style to be passed to the error message. */
+  errorMsgStyle: Partial<CSSStyleDeclaration>;
+  /** Class names to be associated with the invalid field on error. */
+  errorFieldClass: string | string[];
+  /** Custom style to be passed to the invalid field on error. */
+  errorFieldStyle: Partial<CSSStyleDeclaration>;
+  /** Parent element for message. */
+  msgContainer?: HTMLElement;
+}
+
 export interface Rule {
   /** Name of the `Rule`. */
   name: string;
+  /** Error message to be shown if validation fails. */
+  errorMsg: string;
   /** Validation function of `Rule`. */
   fn: (inputElement: HTMLInputElement) => boolean;
 }
 
+interface ValidationItems {
+  /** Field validation status. */
+  isValid: boolean;
+  /** `ValidationStyleConfigs` to be applied to this field. */
+  style: ValidationStyleConfigs;
+  /** Element that indicates error for the field. */
+  errorElement?: HTMLElement;
+}
+
+interface FieldValidationItems extends ValidationItems {
+  /** Set of rules to apply to field to be validated. */
+  rules: Set<Rule>;
+}
+
+interface GroupValidationItems extends ValidationItems {
+  /** Custom error message for required group validation. */
+  errorMsg: string;
+}
+
 export class FormValidator {
-  /** `HTMLFormElement` to be validated */
+  /** `HTMLFormElement` to be validated. */
   private formElement: HTMLFormElement;
   /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
   private itemsToValidate: { [key: string]: Set<Rule> } = {};
+  /** Set of group names that requires at least one input to be checked in the group. */
   private requiredGroups: Set<string> = new Set();
+  /** Default `ValidationStyleConfigs` for invalid fields and groups. */
+  private defaultStyleConfigs: ValidationStyleConfigs;
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
