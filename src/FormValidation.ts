@@ -51,7 +51,7 @@ export class FormValidator {
   /** `HTMLFormElement` to be validated. */
   private formElement: HTMLFormElement;
   /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
-  private itemsToValidate: { [key: string]: Set<Rule> } = {};
+  private itemsToValidate: { [key: string]: FieldValidationItems } = {};
   /** Group names that requires at least one input to be checked in the group. */
   private requiredGroups: { [key: string]: GroupValidationItems } = {};
   /** Default `ValidationStyleConfigs` for invalid fields and groups. */
@@ -110,11 +110,22 @@ export class FormValidator {
    * @param rules `Rule`s to be used for validation of field. Note that validation will occur as per the sequence of the rules specified for the field.
    * @returns current `FormValidator` instance.
    */
-  public addField(cssSelector: string, rules: Rule[]): FormValidator {
-    if (!this.itemsToValidate.hasOwnProperty(cssSelector)) {
-      this.itemsToValidate[cssSelector] = new Set(rules);
+  public addField(
+    cssSelector: string,
+    rules: Rule[],
+    styleConfigs: ValidationStyleConfigs | null = null
+  ): FormValidator {
+    if (this.itemsToValidate.hasOwnProperty(cssSelector)) {
+      rules.forEach((rule) => this.itemsToValidate[cssSelector].rules.add(rule));
+      if (styleConfigs) {
+        this.itemsToValidate[cssSelector].style = styleConfigs;
+      }
     } else {
-      rules.forEach((rule) => this.itemsToValidate[cssSelector].add(rule));
+      this.itemsToValidate[cssSelector] = {
+        isValid: false,
+        style: styleConfigs ? styleConfigs : this.defaultStyleConfigs,
+        rules: new Set(rules),
+      };
     }
     return this;
   }
@@ -141,8 +152,10 @@ export class FormValidator {
     if (!(inputElement instanceof HTMLInputElement)) {
       throw new Error("CSS Selector is not referring to an input element.");
     }
-    for (const rule of this.itemsToValidate[cssSelector]) {
+    for (const rule of this.itemsToValidate[cssSelector].rules) {
       if (!rule.fn(inputElement)) {
+        this.itemsToValidate[cssSelector].isValid = false;
+        // Show Validation Error Message
         return false;
       }
     }
