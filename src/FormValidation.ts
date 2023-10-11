@@ -1,21 +1,33 @@
 export interface ValidationStyleConfigs {
-  /** Class names to be associated with the error message. */
-  errorMsgClass: string | string[];
-  /** Custom style to be passed to the error message. */
-  errorMsgStyle: Partial<CSSStyleDeclaration>;
-  /** Class names to be associated with the invalid field on error. */
-  errorFieldClass: string | string[];
-  /** Custom style to be passed to the invalid field on error. */
-  errorFieldStyle: Partial<CSSStyleDeclaration>;
+  /** CSS class names to be associated with the error message. */
+  errorMsgCssClass: string | string[];
+  /** Custom CSS style to be passed to the error message. */
+  errorMsgCssStyle: Partial<CSSStyleDeclaration>;
+  /** CSS class names to be associated with the invalid field on error. */
+  errorFieldCssClass: string | string[];
+  /** Custom CSS style to be passed to the invalid field on error. */
+  errorFieldCssStyle: Partial<CSSStyleDeclaration>;
+  /** CSS class names to be associated with the success message. */
+  successMsgCssClass: string | string[];
+  /** Custom CSS style to be passed to the success message. */
+  successMsgCssStyle: Partial<CSSStyleDeclaration>;
+  /** CSS class names to be associated with the valid field on success. */
+  successFieldCssClass: string | string[];
+  /** Custom CSS style to be passed to the valid field on success. */
+  successFieldCssStyle: Partial<CSSStyleDeclaration>;
   /** Parent element for message. */
   msgContainer?: HTMLElement;
 }
 
 export const globalDefaultStyleConfigs: ValidationStyleConfigs = {
-  errorMsgClass: "validator-error-msg",
-  errorMsgStyle: {},
-  errorFieldClass: "validator-error-field",
-  errorFieldStyle: {},
+  errorMsgCssClass: "validator-error-msg",
+  errorMsgCssStyle: { color: "#cc0000" },
+  errorFieldCssClass: "validator-error-field",
+  errorFieldCssStyle: { color: "#cc0000", border: "1px solid #cc0000" },
+  successMsgCssClass: "validator-success-msg",
+  successMsgCssStyle: { color: "#4caf50" },
+  successFieldCssClass: "validator-success-field",
+  successFieldCssStyle: { color: "#4caf50", border: "1px solid #4caf50" },
 };
 
 export interface Rule {
@@ -50,7 +62,7 @@ interface GroupValidationItems extends ValidationItems {
 export class FormValidator {
   /** `HTMLFormElement` to be validated. */
   private formElement: HTMLFormElement;
-  /** Dictionary of items to be validated with CSS selector as key and set of `Rules` as values. */
+  /** CSS selectors of fields that are to be validated. */
   private itemsToValidate: { [key: string]: FieldValidationItems } = {};
   /** Group names that requires at least one input to be checked in the group. */
   private requiredGroups: { [key: string]: GroupValidationItems } = {};
@@ -59,36 +71,28 @@ export class FormValidator {
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
-   * @param submitCallback Function to call after successful validation of form on submit. By default it is null.
-   * If no function is passed, validator will not automatically validate on submit.
    * @param defaultStyleConfigs Default `ValidationStyleConfigs` to be applied to validator.
    * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    */
   public constructor(
     formCssSelector: string,
-    submitCallback: (() => void) | null = null,
     defaultStyleConfigs: ValidationStyleConfigs = globalDefaultStyleConfigs
   ) {
     this.formElement = document.querySelector(formCssSelector) as HTMLFormElement;
     if (!this.formElement) {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
-
     this.defaultStyleConfigs = defaultStyleConfigs;
-
-    // Loose check for null
-    if (submitCallback != null) {
-      this.validateOnSubmit(submitCallback);
-    }
   }
 
   /**
-   * Adds the submission callback to the submit event listener of the `HTMLFormElement`.
+   * Builder method that adds the submission callback to the submit event listener of the `HTMLFormElement`.
    * The callback will only fire when the declared fields are valid.
    *
    * @param submitCallback Function to call after successful validation of form on submit.
+   * @returns current `FormValidator` instance.
    */
-  private validateOnSubmit(submitCallback: () => void): void {
+  public onSubmit(submitCallback: () => void): FormValidator {
     this.formElement.addEventListener(
       "submit",
       (event) => {
@@ -101,6 +105,7 @@ export class FormValidator {
       },
       { capture: true }
     );
+    return this;
   }
 
   /**
@@ -108,6 +113,7 @@ export class FormValidator {
    *
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
    * @param rules `Rule`s to be used for validation of field. Note that validation will occur as per the sequence of the rules specified for the field.
+   * @param styleConfigs `ValidationStyleConfigs` to be applied to validation field.
    * @returns current `FormValidator` instance.
    */
   public addField(

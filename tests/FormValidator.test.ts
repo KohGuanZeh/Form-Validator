@@ -1,4 +1,4 @@
-import { Rule, FormValidator } from "../src/FormValidation";
+import { Rule, ValidationStyleConfigs, FormValidator } from "../src/FormValidation";
 
 const anyARule: Rule = {
   name: "Is Case Insensitve A",
@@ -10,6 +10,17 @@ const upperCaseARule: Rule = {
   name: "Is Upper Case A",
   errorMsg: "Field is not uppercase 'A'.",
   fn: (field) => field.value == "A",
+};
+
+const coffeeStyleConfigs: ValidationStyleConfigs = {
+  errorMsgCssClass: "invalid-msg",
+  errorMsgCssStyle: { color: "#c0ffee" },
+  errorFieldCssClass: "invalid-field",
+  errorFieldCssStyle: { color: "c0ffee", border: "5px groove #c0ffee" },
+  successMsgCssClass: "valid-msg",
+  successMsgCssStyle: { color: "#dabeef" },
+  successFieldCssClass: "valid-field",
+  successFieldCssStyle: { color: "#dabeef", border: "5px inset #dabeef" },
 };
 
 describe("Test constructor", () => {
@@ -123,6 +134,7 @@ describe("Test Submission Behaviour", () => {
   let inputField2: HTMLInputElement;
   let groupInputs: NodeListOf<HTMLInputElement>;
   let submitButton: HTMLInputElement;
+  let errorMsgContainer: HTMLElement;
   let submitted: boolean;
   beforeEach(() => {
     document.body.innerHTML = `
@@ -133,6 +145,7 @@ describe("Test Submission Behaviour", () => {
       <input name="required-group" type="radio" value="2">
       <input name="required-group" type="radio" value="3">
       <input type="submit" value="Submit"/>
+      <div class="error-msg-container"></div>
     </form>
     `;
     submitted = false;
@@ -142,58 +155,25 @@ describe("Test Submission Behaviour", () => {
       "[name='required-group']"
     ) as NodeListOf<HTMLInputElement>;
     submitButton = document.querySelector("[type='submit']") as HTMLInputElement;
+    errorMsgContainer = document.querySelector("error-msg-container") as HTMLElement;
   });
 
   test("Form submission should pass if and only if validation passes.", () => {
-    validator = new FormValidator("form", () => {
-      submitted = true;
-    })
+    validator = new FormValidator("form")
+      .onSubmit(() => (submitted = true))
       .addField("[name='input-1']", [anyARule])
       .addField("[name='input-2']", [anyARule, upperCaseARule])
       .addRequiredGroup("required-group");
 
     inputField1.value = "a";
     inputField2.value = "Some wrong value";
-    groupInputs[2].checked = true;
 
     submitButton.click();
     expect(submitted).toStrictEqual(false);
 
-    inputField2.value = "A";
+    inputField2.value = "a";
+    groupInputs[2].checked = true;
 
-    submitButton.click();
-    expect(submitted).toStrictEqual(true);
-  });
-
-  test("FormValidator should not run validation if no submission callback was passed.", () => {
-    let form = document.querySelector("form");
-    form?.addEventListener("submit", (e) => {
-      submitted = true;
-    });
-
-    validator = new FormValidator("form")
-      .addField("[name='input-1']", [anyARule])
-      .addField("[name='input-2']", [anyARule, upperCaseARule])
-      .addRequiredGroup("required-group");
-
-    inputField1.value = "a";
-    inputField2.value = "Some wrong value";
-    groupInputs[0].checked = true;
-
-    // No validation should occur
-    submitButton.click();
-    expect(submitted).toStrictEqual(true);
-
-    submitted = false;
-    submitButton.addEventListener("click", (e) => {
-      if (!validator.validate()) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    });
-
-    // Validation should fail
-    submitButton.click();
     expect(submitted).toStrictEqual(false);
 
     inputField2.value = "A";
