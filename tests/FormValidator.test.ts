@@ -158,6 +158,18 @@ describe("Test Submission Behaviour", () => {
     errorMsgContainer = document.querySelector("error-msg-container") as HTMLElement;
   });
 
+  test("Submission callback should be overwritten with onSubmit", () => {
+    validator = new FormValidator("form")
+      .onSubmit(() => (submitted = false))
+      .onSubmit(() => (submitted = true))
+      .addField("[name='input-1']", [anyARule]);
+
+    inputField1.value = "A";
+
+    submitButton.click();
+    expect(submitted).toStrictEqual(true);
+  });
+
   test("Form submission should pass if and only if validation passes.", () => {
     validator = new FormValidator("form")
       .onSubmit(() => (submitted = true))
@@ -171,14 +183,34 @@ describe("Test Submission Behaviour", () => {
     submitButton.click();
     expect(submitted).toStrictEqual(false);
 
-    inputField2.value = "a";
     groupInputs[2].checked = true;
-
-    expect(submitted).toStrictEqual(false);
-
     inputField2.value = "A";
 
     submitButton.click();
     expect(submitted).toStrictEqual(true);
+  });
+
+  test("FormValidator should show error for inputs that do not meet the requirements and hide errors once valid.", () => {
+    validator = new FormValidator("form")
+      .onSubmit(() => (submitted = true))
+      .addField("[name='input-1']", [anyARule])
+      .addField("[name='input-2']", [anyARule, upperCaseARule], coffeeStyleConfigs)
+      .addRequiredGroup("required-group");
+
+    submitButton.click();
+    expect(submitted).toStrictEqual(false);
+    // Show error for inputField1
+    // Show error for inputField2 (should specifically show anyARule in coffeeStyleConfigs)
+    // Show error for groupInputs
+
+    // Need to consider how the styling will be.
+    // Will styling be done through classes or? in line styles? (If inline styles then...?)
+    // How to make inline be the secondary behaviour? (Compared to adding custom classes)
+
+    // Need to consider cases using msgBox also
+    // Any easy way to modify default configs? So can just add one property of styleConfigs... (Probably use partial...)
+
+    // Also need to add success message... Now is just getting all the CSS work done...
+    // Possibly want to do end to end testing with this?
   });
 });

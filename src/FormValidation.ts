@@ -68,6 +68,8 @@ export class FormValidator {
   private requiredGroups: { [key: string]: GroupValidationItems } = {};
   /** Default `ValidationStyleConfigs` for invalid fields and groups. */
   private defaultStyleConfigs: ValidationStyleConfigs;
+  /** Submission callback to be fired upon successful validation on submit */
+  private submitCallback = (event: SubmitEvent) => {};
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
@@ -83,28 +85,26 @@ export class FormValidator {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
     this.defaultStyleConfigs = defaultStyleConfigs;
+    this.formElement.addEventListener("submit", (event) => {
+      if (!this.validate()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      this.submitCallback(event);
+    });
   }
 
   /**
    * Builder method that adds the submission callback to the submit event listener of the `HTMLFormElement`.
    * The callback will only fire when the declared fields are valid.
+   * If a previous callback already exists, it will be overwritten.
    *
    * @param submitCallback Function to call after successful validation of form on submit.
    * @returns current `FormValidator` instance.
    */
-  public onSubmit(submitCallback: () => void): FormValidator {
-    this.formElement.addEventListener(
-      "submit",
-      (event) => {
-        event.preventDefault();
-        if (!this.validate()) {
-          event.stopPropagation();
-          return;
-        }
-        submitCallback();
-      },
-      { capture: true }
-    );
+  public onSubmit(submitCallback: (event: SubmitEvent) => void): FormValidator {
+    this.submitCallback = submitCallback;
     return this;
   }
 
