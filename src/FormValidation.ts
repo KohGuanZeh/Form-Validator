@@ -19,7 +19,7 @@ export interface ValidationStyleConfigs {
   msgContainer?: HTMLElement;
 }
 
-export const globalDefaultStyleConfigs: ValidationStyleConfigs = {
+export const globalDefaultStyleConfigs: Readonly<ValidationStyleConfigs> = {
   errorMsgCssClass: "validator-error-msg",
   errorMsgCssStyle: { color: "#cc0000" },
   errorFieldCssClass: "validator-error-field",
@@ -44,7 +44,7 @@ interface ValidationItems {
   isValid: boolean;
   /** `ValidationStyleConfigs` to be applied to this field.
    * Overwrites the default `ValidationStyleConfigs` in the FormValidator for the particular field. */
-  style: ValidationStyleConfigs;
+  style: Partial<ValidationStyleConfigs>;
   /** Element that indicates error for the field. */
   errorElement?: HTMLElement;
 }
@@ -66,25 +66,26 @@ export class FormValidator {
   private itemsToValidate: { [key: string]: FieldValidationItems } = {};
   /** Group names that requires at least one input to be checked in the group. */
   private requiredGroups: { [key: string]: GroupValidationItems } = {};
-  /** Default `ValidationStyleConfigs` for invalid fields and groups. */
-  private defaultStyleConfigs: ValidationStyleConfigs;
+  /** Default `ValidationStyleConfigs` for invalid fields and groups. By default it uses the globalDefaultStyleConfigs. */
+  private defaultStyleConfigs: ValidationStyleConfigs = JSON.parse(
+    JSON.stringify(globalDefaultStyleConfigs)
+  );
   /** Submission callback to be fired upon successful validation on submit */
   private submitCallback = (event: SubmitEvent) => {};
 
   /**
    * @param formCssSelector CSS Selector of `HTMLFormElement` to be validated.
-   * @param defaultStyleConfigs Default `ValidationStyleConfigs` to be applied to validator.
+   * @param styleConfigs Default `ValidationStyleConfigs` to be applied to validator. By default, it uses globalDefaultStyleConfigs. Included properties will overwrite the properties used for this `FormValidator` instance.
    * @throws "Cannot query requested HTMLFormElement." if specified `HTMLFormElement` cannot be found.
    */
-  public constructor(
-    formCssSelector: string,
-    defaultStyleConfigs: ValidationStyleConfigs = globalDefaultStyleConfigs
-  ) {
+  public constructor(formCssSelector: string, styleConfigs: Partial<ValidationStyleConfigs> = {}) {
     this.formElement = document.querySelector(formCssSelector) as HTMLFormElement;
     if (!this.formElement) {
       throw new Error("Cannot query requested HTMLFormElement.");
     }
-    this.defaultStyleConfigs = defaultStyleConfigs;
+
+    this.overwriteStyleConfigs(this.defaultStyleConfigs, styleConfigs);
+
     this.formElement.addEventListener("submit", (event) => {
       if (!this.validate()) {
         event.preventDefault();
@@ -113,23 +114,21 @@ export class FormValidator {
    *
    * @param cssSelector CSS Selector of `HTMLInputElement` to be validated.
    * @param rules `Rule`s to be used for validation of field. Note that validation will occur as per the sequence of the rules specified for the field.
-   * @param styleConfigs `ValidationStyleConfigs` to be applied to validation field.
+   * @param styleConfigs `ValidationStyleConfigs` to be applied to validation field that will overwrite the default. If called on an existing registered field, it will only overwrite properties that are passed in the new object.
    * @returns current `FormValidator` instance.
    */
   public addField(
     cssSelector: string,
     rules: Rule[],
-    styleConfigs: ValidationStyleConfigs | null = null
+    styleConfigs: Partial<ValidationStyleConfigs> = {}
   ): FormValidator {
     if (this.itemsToValidate.hasOwnProperty(cssSelector)) {
       rules.forEach((rule) => this.itemsToValidate[cssSelector].rules.add(rule));
-      if (styleConfigs) {
-        this.itemsToValidate[cssSelector].style = styleConfigs;
-      }
+      this.overwriteStyleConfigs(this.itemsToValidate[cssSelector].style, styleConfigs);
     } else {
       this.itemsToValidate[cssSelector] = {
         isValid: false,
-        style: styleConfigs ? styleConfigs : this.defaultStyleConfigs,
+        style: JSON.parse(JSON.stringify(styleConfigs)),
         rules: new Set(rules),
       };
     }
@@ -174,24 +173,22 @@ export class FormValidator {
    *
    * @param groupName Name of input group that is required.
    * @param errorMsg Custom error message to show if required group is not met.
-   * @param styleConfigs `ValidationStyleConfigs` to be applied to required group.
+   * @param styleConfigs `ValidationStyleConfigs` to be applied to required group that will overwrite the default. If called on an existing registered field, it will only overwrite properties that are passed in the new object.
    * @returns current `FormValidator` instance.
    */
   public addRequiredGroup(
     groupName: string,
     errorMsg: string = "Group is required.",
-    styleConfigs: ValidationStyleConfigs | null = null
+    styleConfigs: Partial<ValidationStyleConfigs> = {}
   ): FormValidator {
     if (this.requiredGroups.hasOwnProperty(groupName)) {
       this.requiredGroups[groupName].errorMsg = errorMsg;
-      if (styleConfigs) {
-        this.requiredGroups[groupName].style = styleConfigs;
-      }
+      this.overwriteStyleConfigs(this.requiredGroups[groupName].style, styleConfigs);
     } else {
       this.requiredGroups[groupName] = {
         isValid: false,
         errorMsg: errorMsg,
-        style: styleConfigs ? styleConfigs : this.defaultStyleConfigs,
+        style: JSON.parse(JSON.stringify(styleConfigs)),
       };
     }
     return this;
@@ -242,5 +239,22 @@ export class FormValidator {
       result &&= this.validateRequiredGroup(key);
     });
     return result;
+  }
+
+  /**
+   * Overwrites the existing `ValidationStyleConfigs` properties with the new one.
+   * Only properties added in the new `ValidationStyleConfigs` will be taken.
+   * Existing properties that are not in the new `ValidationStyleConfigs` will remain.
+   *
+   * @param currentStyle Current `ValidationStyleConfigs` settings.
+   * @param newStyle New `ValidationStyleConfigs`.
+   */
+  private overwriteStyleConfigs(
+    currentStyle: Partial<ValidationStyleConfigs>,
+    newStyle: Partial<ValidationStyleConfigs>
+  ) {
+    Object.keys(newStyle).forEach((prop) => {
+      currentStyle[prop] = newStyle[prop];
+    });
   }
 }

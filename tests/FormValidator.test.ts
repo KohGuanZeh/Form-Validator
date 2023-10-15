@@ -12,17 +12,6 @@ const upperCaseARule: Rule = {
   fn: (field) => field.value == "A",
 };
 
-const coffeeStyleConfigs: ValidationStyleConfigs = {
-  errorMsgCssClass: "invalid-msg",
-  errorMsgCssStyle: { color: "#c0ffee" },
-  errorFieldCssClass: "invalid-field",
-  errorFieldCssStyle: { color: "c0ffee", border: "5px groove #c0ffee" },
-  successMsgCssClass: "valid-msg",
-  successMsgCssStyle: { color: "#dabeef" },
-  successFieldCssClass: "valid-field",
-  successFieldCssStyle: { color: "#dabeef", border: "5px inset #dabeef" },
-};
-
 describe("Test constructor", () => {
   test("Constructor should throw error if HTMLFormElement cannot be found.", () => {
     document.body.innerHTML = `
@@ -134,7 +123,6 @@ describe("Test Submission Behaviour", () => {
   let inputField2: HTMLInputElement;
   let groupInputs: NodeListOf<HTMLInputElement>;
   let submitButton: HTMLInputElement;
-  let errorMsgContainer: HTMLElement;
   let submitted: boolean;
   beforeEach(() => {
     document.body.innerHTML = `
@@ -145,7 +133,6 @@ describe("Test Submission Behaviour", () => {
       <input name="required-group" type="radio" value="2">
       <input name="required-group" type="radio" value="3">
       <input type="submit" value="Submit"/>
-      <div class="error-msg-container"></div>
     </form>
     `;
     submitted = false;
@@ -155,13 +142,18 @@ describe("Test Submission Behaviour", () => {
       "[name='required-group']"
     ) as NodeListOf<HTMLInputElement>;
     submitButton = document.querySelector("[type='submit']") as HTMLInputElement;
-    errorMsgContainer = document.querySelector("error-msg-container") as HTMLElement;
   });
 
   test("Submission callback should be overwritten with onSubmit", () => {
     validator = new FormValidator("form")
-      .onSubmit(() => (submitted = false))
-      .onSubmit(() => (submitted = true))
+      .onSubmit((event) => {
+        event.preventDefault();
+        submitted = false;
+      })
+      .onSubmit((event) => {
+        event.preventDefault();
+        submitted = true;
+      })
       .addField("[name='input-1']", [anyARule]);
 
     inputField1.value = "A";
@@ -172,7 +164,10 @@ describe("Test Submission Behaviour", () => {
 
   test("Form submission should pass if and only if validation passes.", () => {
     validator = new FormValidator("form")
-      .onSubmit(() => (submitted = true))
+      .onSubmit((event) => {
+        event.preventDefault();
+        submitted = true;
+      })
       .addField("[name='input-1']", [anyARule])
       .addField("[name='input-2']", [anyARule, upperCaseARule])
       .addRequiredGroup("required-group");
@@ -188,29 +183,5 @@ describe("Test Submission Behaviour", () => {
 
     submitButton.click();
     expect(submitted).toStrictEqual(true);
-  });
-
-  test("FormValidator should show error for inputs that do not meet the requirements and hide errors once valid.", () => {
-    validator = new FormValidator("form")
-      .onSubmit(() => (submitted = true))
-      .addField("[name='input-1']", [anyARule])
-      .addField("[name='input-2']", [anyARule, upperCaseARule], coffeeStyleConfigs)
-      .addRequiredGroup("required-group");
-
-    submitButton.click();
-    expect(submitted).toStrictEqual(false);
-    // Show error for inputField1
-    // Show error for inputField2 (should specifically show anyARule in coffeeStyleConfigs)
-    // Show error for groupInputs
-
-    // Need to consider how the styling will be.
-    // Will styling be done through classes or? in line styles? (If inline styles then...?)
-    // How to make inline be the secondary behaviour? (Compared to adding custom classes)
-
-    // Need to consider cases using msgBox also
-    // Any easy way to modify default configs? So can just add one property of styleConfigs... (Probably use partial...)
-
-    // Also need to add success message... Now is just getting all the CSS work done...
-    // Possibly want to do end to end testing with this?
   });
 });
