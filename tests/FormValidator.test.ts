@@ -1,4 +1,4 @@
-import { Rule, ValidationStyleConfigs, FormValidator } from "../src/FormValidation";
+import { Rule, ValidationStyleOptions, FormValidator } from "../src/FormValidation";
 
 const anyARule: Rule = {
   name: "Is Case Insensitve A",
